@@ -215,9 +215,9 @@ fu! s:_FindTargetsByRegexp(re, line_numbers)
 endfu
 let FindTargetsByRegexp = { re -> { lnums -> s:_FindTargetsByRegexp(re, lnums) }}
 
-let FindLineTargets = FindTargetsByRegexp('^\zs.')
-let FindWordTargets = FindTargetsByRegexp('\<.')
-let FindEndWordTargets = FindTargetsByRegexp('.\>')
+let FindLineTargets     = FindTargetsByRegexp('^\zs.')
+let FindWordTargets     = FindTargetsByRegexp('\<.')
+let FindEndWordTargets  = FindTargetsByRegexp('.\>')
 let FindConstantTargets = FindTargetsByRegexp('\<\u')
 
 fu! s:_FindParagraphTargets(line_numbers)
@@ -238,41 +238,79 @@ fu! s:_GoAndComeBack(l, c, keys)
     call setpos('.', p)
 endfu
 
+fu! s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)
+    let p = getcurpos()
+    call cursor(a:l, a:c)
+    exe "normal! ".a:keys
+    call setpos('.', p)
+    exe "normal! ".a:bkeys
+endfu
+
 fu! s:_GoAndFeedKeys(l, c, keys)
     call cursor(a:l, a:c)
     call feedkeys(a:keys, 'n')
 endfu
 
-let GoAndComeBack = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
-let GoAndFeedKeys = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
+let GoAndComeBack          = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
+let GoAndComeBackAndDoMore = { keys, bkeys -> { l, c -> s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)}}
+let GoAndFeedKeys          = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
 
-let DeleteLine = GoAndComeBack('dd')
-let DeleteWord = GoAndComeBack('dw')
-let DeleteEndWord = GoAndComeBack('vbd')
+let DeleteLine      = GoAndComeBack('dd')
+let DeleteWord      = GoAndComeBack('dw')
+let DeleteEndWord   = GoAndComeBack('vbd')
 let DeleteParagraph = GoAndComeBack('dap')
 
-let ChangeLine = GoAndFeedKeys('cc')
-let ChangeWord = GoAndFeedKeys('cw')
-let ChangeEndWord = GoAndFeedKeys('vbc')
+let YankLine      = GoAndComeBack('yy')
+let YankWord      = GoAndComeBack('yw')
+let YankEndWord   = GoAndComeBack('vby')
+let YankParagraph = GoAndComeBack('yap')
+
+let PasteLine      = GoAndComeBackAndDoMore('yy', 'p')
+let PasteWord      = GoAndComeBackAndDoMore('yw', 'p')
+let PasteEndWord   = GoAndComeBackAndDoMore('vby', 'p')
+let PasteParagraph = GoAndComeBackAndDoMore('yap', 'p')
+
+let PullLine      = GoAndComeBackAndDoMore('dd', 'p')
+let PullWord      = GoAndComeBackAndDoMore('dw', 'p')
+let PullEndWord   = GoAndComeBackAndDoMore('vbd', 'p')
+let PullParagraph = GoAndComeBackAndDoMore('dap', 'p')
+
+let ChangeLine      = GoAndFeedKeys('cc')
+let ChangeWord      = GoAndFeedKeys('cw')
+let ChangeEndWord   = GoAndFeedKeys('vbc')
 let ChangeParagraph = GoAndFeedKeys('cip')
 
 nno smw :call Precise(FindWordTargets, function('cursor'))<cr>
 nno scw :call Precise(FindWordTargets, ChangeWord)<cr>
 nno sdw :call Precise(FindWordTargets, DeleteWord)<cr>
+nno syw :call Precise(FindWordTargets, YankWord)<cr>
+nno spw :call Precise(FindWordTargets, PasteWord)<cr>
+nno slw :call Precise(FindWordTargets, PullWord)<cr>
 
 nno smc :call Precise(FindConstantTargets, function('cursor'))<cr>
 nno scc :call Precise(FindConstantTargets, ChangeWord)<cr>
 nno sdc :call Precise(FindConstantTargets, DeleteWord)<cr>
+nno syc :call Precise(FindConstantTargets, YankWord)<cr>
+nno spc :call Precise(FindConstantTargets, PasteWord)<cr>
+nno slc :call Precise(FindConstantTargets, PullWord)<cr>
 
 nno sme :call Precise(FindEndWordTargets, function('cursor'))<cr>
 nno sce :call Precise(FindEndWordTargets, ChangeEndWord)<cr>
 nno sde :call Precise(FindEndWordTargets, DeleteEndWord)<cr>
+nno sye :call Precise(FindEndWordTargets, YankEndWord)<cr>
+nno spe :call Precise(FindEndWordTargets, PasteEndWord)<cr>
+nno sle :call Precise(FindEndWordTargets, PullEndWord)<cr>
 
 nno sml :call Precise(FindLineTargets, function('cursor'))<cr>
 nno scl :call Precise(FindLineTargets, ChangeLine)<cr>
 nno sdl :call Precise(FindLineTargets, DeleteLine)<cr>
+nno syl :call Precise(FindLineTargets, YankLine)<cr>
+nno spl :call Precise(FindLineTargets, PasteLine)<cr>
+nno sll :call Precise(FindLineTargets, PullLine)<cr>
 
 nno smp :call Precise(FindParagraphTargets, function('cursor'))<cr>
 nno scp :call Precise(FindParagraphTargets, ChangeParagraph)<cr>
 nno sdp :call Precise(FindParagraphTargets, DeleteParagraph)<cr>
-
+nno syp :call Precise(FindParagraphTargets, YankParagraph)<cr>
+nno spp :call Precise(FindParagraphTargets, PasteParagraph)<cr>
+nno slp :call Precise(FindParagraphTargets, PullParagraph)<cr>
