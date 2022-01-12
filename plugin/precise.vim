@@ -219,6 +219,8 @@ let FindLineTargets     = FindTargetsByRegexp('^\zs.')
 let FindWordTargets     = FindTargetsByRegexp('\<.')
 let FindEndWordTargets  = FindTargetsByRegexp('.\>')
 let FindConstantTargets = FindTargetsByRegexp('\<\u')
+let FindBracketTargets  = FindTargetsByRegexp('[([{]')
+let FindQuoteTargets    = FindTargetsByRegexp('[''"]')
 
 fu! s:_FindParagraphTargets(line_numbers)
     let targets = []
@@ -238,10 +240,25 @@ fu! s:_GoAndComeBack(l, c, keys)
     call setpos('.', p)
 endfu
 
+fu! s:_UnsafeGoAndComeBack(l, c, keys)
+    let p = getcurpos()
+    call cursor(a:l, a:c)
+    exe "normal ".a:keys
+    call setpos('.', p)
+endfu
+
 fu! s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)
     let p = getcurpos()
     call cursor(a:l, a:c)
     exe "normal! ".a:keys
+    call setpos('.', p)
+    exe "normal! ".a:bkeys
+endfu
+
+fu! s:_UnsafeGoAndComeBackAndDoMore(l, c, keys, bkeys)
+    let p = getcurpos()
+    call cursor(a:l, a:c)
+    exe "normal ".a:keys
     call setpos('.', p)
     exe "normal! ".a:bkeys
 endfu
@@ -251,15 +268,17 @@ fu! s:_GoAndFeedKeys(l, c, keys)
     call feedkeys(a:keys, 'n')
 endfu
 
-fu! s:_GoAndUnsafeFeedKeys(l, c, keys)
+fu! s:_UnsafeGoAndFeedKeys(l, c, keys)
     call cursor(a:l, a:c)
     call feedkeys(a:keys, 't')
 endfu
 
-let GoAndComeBack          = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
-let GoAndComeBackAndDoMore = { keys, bkeys -> { l, c -> s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)}}
-let GoAndFeedKeys          = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
-let GoAndUnsafeFeedKeys    = { keys -> { l, c -> s:_GoAndUnsafeFeedKeys(l, c, keys)}}
+let GoAndComeBack                = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
+let GoAndComeBackAndDoMore       = { keys, bkeys -> { l, c -> s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)}}
+let UnsafeGoAndComeBack          = { keys -> { l, c -> s:_UnsafeGoAndComeBack(l, c, keys)}}
+let UnsafeGoAndComeBackAndDoMore = { keys, bkeys -> { l, c -> s:_UnsafeGoAndComeBackAndDoMore(l, c, keys, bkeys)}}
+let GoAndFeedKeys                = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
+let UnsafeGoAndFeedKeys          = { keys -> { l, c -> s:_UnsafeGoAndFeedKeys(l, c, keys)}}
 
 let DeleteLine      = GoAndComeBack('dd')
 let DeleteWord      = GoAndComeBack('dw')
@@ -286,8 +305,49 @@ let ChangeWord      = GoAndFeedKeys('cw')
 let ChangeEndWord   = GoAndFeedKeys('vbc')
 let ChangeParagraph = GoAndFeedKeys('cip')
 
+" targets is a smart and cool plugin
+if exists("g:loaded_targets")
+    let DeleteBracket = UnsafeGoAndComeBack("dib")
+    let YankBracket   = UnsafeGoAndComeBack("yib")
+    let PasteBracket  = UnsafeGoAndComeBackAndDoMore("yib", 'p')
+    let PullBracket   = UnsafeGoAndComeBackAndDoMore("dib", 'p')
+    let ChangeBracket = UnsafeGoAndFeedKeys('cib')
+
+    let DeleteQuote = UnsafeGoAndComeBack("diq")
+    let YankQuote   = UnsafeGoAndComeBack("yiq")
+    let PasteQuote  = UnsafeGoAndComeBackAndDoMore("yiq", 'p')
+    let PullQuote   = UnsafeGoAndComeBackAndDoMore("diq", 'p')
+    let ChangeQuote = UnsafeGoAndFeedKeys('ciq')
+else
+    let DeleteBracket = GoAndComeBack("ld/[)\\]}]\<CR>")
+    let YankBracket   = GoAndComeBack("ly/[)\\]}]\<CR>")
+    let PasteBracket  = GoAndComeBackAndDoMore("ly/[)\\]}]\<CR>", 'p')
+    let PullBracket   = GoAndComeBackAndDoMore("ld/[)\\]}]\<CR>", 'p')
+    let ChangeBracket = GoAndFeedKeys('lc/[)\]}]')
+
+    let DeleteQuote = GoAndComeBack("ld/['\"]\<CR>")
+    let YankQuote   = GoAndComeBack("ly/['\"]\<CR>")
+    let PasteQuote  = GoAndComeBackAndDoMore("ly/['\"]\<CR>", 'p')
+    let PullQuote   = GoAndComeBackAndDoMore("ld/['\"]\<CR>", 'p')
+    let ChangeQuote = GoAndFeedKeys('lc/[''"]')
+endif
+
 " literal for <right>
-let Jump = GoAndUnsafeFeedKeys('OC')
+let Jump = UnsafeGoAndFeedKeys('OC')
+
+nno smb :call Precise(FindBracketTargets, function('cursor'))<cr>
+nno scb :call Precise(FindBracketTargets, ChangeBracket)<cr>
+nno sdb :call Precise(FindBracketTargets, DeleteBracket)<cr>
+nno syb :call Precise(FindBracketTargets, YankBracket)<cr>
+nno spb :call Precise(FindBracketTargets, PasteBracket)<cr>
+nno slb :call Precise(FindBracketTargets, PullBracket)<cr>
+
+nno smq :call Precise(FindQuoteTargets, function('cursor'))<cr>
+nno scq :call Precise(FindQuoteTargets, ChangeQuote)<cr>
+nno sdq :call Precise(FindQuoteTargets, DeleteQuote)<cr>
+nno syq :call Precise(FindQuoteTargets, YankQuote)<cr>
+nno spq :call Precise(FindQuoteTargets, PasteQuote)<cr>
+nno slq :call Precise(FindQuoteTargets, PullQuote)<cr>
 
 nno smw :call Precise(FindWordTargets, function('cursor'))<cr>
 nno scw :call Precise(FindWordTargets, ChangeWord)<cr>
