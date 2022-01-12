@@ -294,6 +294,9 @@ let UnsafeGoAndComeBackAndDoMore = { keys, bkeys -> { l, c -> s:_UnsafeGoAndCome
 let GoAndFeedKeys                = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
 let UnsafeGoAndFeedKeys          = { keys -> { l, c -> s:_UnsafeGoAndFeedKeys(l, c, keys)}}
 
+let CommentLine      = UnsafeGoAndComeBack('gcc')
+let CommentParagraph = UnsafeGoAndComeBack('gcip')
+
 let DeleteLine      = GoAndComeBack('dd')
 let DeleteWord      = GoAndComeBack('dw')
 let DeleteEndWord   = GoAndComeBack('vbd')
@@ -354,6 +357,7 @@ if exists("g:indent_object")
     let PasteIndent  = UnsafeGoAndComeBackAndDoMore("yii", 'p')
     let PullIndent   = UnsafeGoAndComeBackAndDoMore("dii", 'p')
     let ChangeIndent = UnsafeGoAndFeedKeys('cii')
+    let CommentIndent = UnsafeGoAndComeBack('gcii')
 
     nno smi :call Precise(FindIndentTargets, function('cursor'))<cr>
     nno sci :call Precise(FindIndentTargets, ChangeIndent)<cr>
@@ -361,6 +365,7 @@ if exists("g:indent_object")
     nno syi :call Precise(FindIndentTargets, YankIndent)<cr>
     nno spi :call Precise(FindIndentTargets, PasteIndent)<cr>
     nno sli :call Precise(FindIndentTargets, PullIndent)<cr>
+    nno ssi :call Precise(FindIndentTargets, CommentIndent)<cr>
 endif
 
 " literal for <right>
@@ -409,6 +414,7 @@ nno sdl :call Precise(FindLineTargets, DeleteLine)<cr>
 nno syl :call Precise(FindLineTargets, YankLine)<cr>
 nno spl :call Precise(FindLineTargets, PasteLine)<cr>
 nno sll :call Precise(FindLineTargets, PullLine)<cr>
+nno ssl :call Precise(FindLineTargets, CommentLine)<cr>
 
 nno smp :call Precise(FindParagraphTargets, function('cursor'))<cr>
 nno scp :call Precise(FindParagraphTargets, ChangeParagraph)<cr>
@@ -416,3 +422,4 @@ nno sdp :call Precise(FindParagraphTargets, DeleteParagraph)<cr>
 nno syp :call Precise(FindParagraphTargets, YankParagraph)<cr>
 nno spp :call Precise(FindParagraphTargets, PasteParagraph)<cr>
 nno slp :call Precise(FindParagraphTargets, PullParagraph)<cr>
+nno ssp :call Precise(FindParagraphTargets, CommentParagraph)<cr>
