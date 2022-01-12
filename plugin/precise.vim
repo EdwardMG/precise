@@ -233,6 +233,20 @@ fu! s:_FindParagraphTargets(line_numbers)
 endfu
 let FindParagraphTargets = { lnums -> s:_FindParagraphTargets(lnums)}
 
+fu! s:_FindIndentTargets(line_numbers)
+    let targets = []
+    for l in a:line_numbers
+        let non_empty_line = match(getline(l), '^.', 0, 1) != -1
+        let leading_whitespace = len(matchstr(getline(l), "^ *"))
+        let next_leading_whitespace = len(matchstr(getline(l+1), "^ *"))
+        if non_empty_line && leading_whitespace < next_leading_whitespace
+            call add(targets, [l+1, 1])
+        endif
+    endfor
+    return targets
+endfu
+let FindIndentTargets = { lnums -> s:_FindIndentTargets(lnums)}
+
 fu! s:_GoAndComeBack(l, c, keys)
     let p = getcurpos()
     call cursor(a:l, a:c)
@@ -330,6 +344,23 @@ else
     let PasteQuote  = GoAndComeBackAndDoMore("ly/['\"]\<CR>", 'p')
     let PullQuote   = GoAndComeBackAndDoMore("ld/['\"]\<CR>", 'p')
     let ChangeQuote = GoAndFeedKeys('lc/[''"]')
+endif
+
+" in practice this would go in a vimrc
+let g:indent_object = 1
+if exists("g:indent_object")
+    let DeleteIndent = UnsafeGoAndComeBack("dii")
+    let YankIndent   = UnsafeGoAndComeBack("yii")
+    let PasteIndent  = UnsafeGoAndComeBackAndDoMore("yii", 'p')
+    let PullIndent   = UnsafeGoAndComeBackAndDoMore("dii", 'p')
+    let ChangeIndent = UnsafeGoAndFeedKeys('cii')
+
+    nno smi :call Precise(FindIndentTargets, function('cursor'))<cr>
+    nno sci :call Precise(FindIndentTargets, ChangeIndent)<cr>
+    nno sdi :call Precise(FindIndentTargets, DeleteIndent)<cr>
+    nno syi :call Precise(FindIndentTargets, YankIndent)<cr>
+    nno spi :call Precise(FindIndentTargets, PasteIndent)<cr>
+    nno sli :call Precise(FindIndentTargets, PullIndent)<cr>
 endif
 
 " literal for <right>
