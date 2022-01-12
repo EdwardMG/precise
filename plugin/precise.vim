@@ -251,9 +251,15 @@ fu! s:_GoAndFeedKeys(l, c, keys)
     call feedkeys(a:keys, 'n')
 endfu
 
+fu! s:_GoAndUnsafeFeedKeys(l, c, keys)
+    call cursor(a:l, a:c)
+    call feedkeys(a:keys, 't')
+endfu
+
 let GoAndComeBack          = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
 let GoAndComeBackAndDoMore = { keys, bkeys -> { l, c -> s:_GoAndComeBackAndDoMore(l, c, keys, bkeys)}}
 let GoAndFeedKeys          = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
+let GoAndUnsafeFeedKeys    = { keys -> { l, c -> s:_GoAndUnsafeFeedKeys(l, c, keys)}}
 
 let DeleteLine      = GoAndComeBack('dd')
 let DeleteWord      = GoAndComeBack('dw')
@@ -280,6 +286,9 @@ let ChangeWord      = GoAndFeedKeys('cw')
 let ChangeEndWord   = GoAndFeedKeys('vbc')
 let ChangeParagraph = GoAndFeedKeys('cip')
 
+" literal for <right>
+let Jump = GoAndUnsafeFeedKeys('OC')
+
 nno smw :call Precise(FindWordTargets, function('cursor'))<cr>
 nno scw :call Precise(FindWordTargets, ChangeWord)<cr>
 nno sdw :call Precise(FindWordTargets, DeleteWord)<cr>
@@ -293,6 +302,8 @@ nno sdc :call Precise(FindConstantTargets, DeleteWord)<cr>
 nno syc :call Precise(FindConstantTargets, YankWord)<cr>
 nno spc :call Precise(FindConstantTargets, PasteWord)<cr>
 nno slc :call Precise(FindConstantTargets, PullWord)<cr>
+
+nno sj :call Precise(FindConstantTargets, Jump)<cr>
 
 nno sme :call Precise(FindEndWordTargets, function('cursor'))<cr>
 nno sce :call Precise(FindEndWordTargets, ChangeEndWord)<cr>
