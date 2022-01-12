@@ -30,26 +30,9 @@ for i in s:index_to_key
 endfor
 
 
-" function returns list of places ([line, column]),
-" that match regular expression 're'
-" in lines of numbers from list 'line_numbers'
-function! s:FindTargets(re, line_numbers)
-    let targets = []
-    for l in a:line_numbers
-        let n = 1
-        let match_start = match(getline(l), a:re, 0, 1)
-        while match_start != -1
-            call add(targets, [l, match_start + 1])
-            let n += 1
-            let match_start = match(getline(l), a:re, 0, n)
-        endwhile
-    endfor
-    return targets
-endfunction
-
 " split 'list' into groups (list of lists) of
 " 'group_size' length
-function! s:SplitListIntoGroups(list, group_size)
+fu! s:SplitListIntoGroups(list, group_size)
     let groups = []
     let i = 0
     while i < len(a:list)
@@ -57,9 +40,9 @@ function! s:SplitListIntoGroups(list, group_size)
         let i += a:group_size
     endwhile
     return groups
-endfunction
+endfu
 
-function! s:GetLinesFromCoordList(list)
+fu! s:GetLinesFromCoordList(list)
     let lines_seen = {}
     let lines_no = []
     for [l, c] in a:list
@@ -69,28 +52,28 @@ function! s:GetLinesFromCoordList(list)
         endif
     endfor
     return lines_no
-endfunction
+endfu
 
-function! s:CreateHighlightRegex(coords)
+fu! s:CreateHighlightRegex(coords)
     let tmp = []
     for [l, c] in s:Flatten(a:coords)
         call add(tmp, '\%' . l . 'l\%' . c . 'c')
     endfor
     return join(tmp, '\|')
-endfunction
+endfu
 
-function! s:Flatten(list)
+fu! s:Flatten(list)
     let res = []
     for elem in a:list
         call extend(res, elem)
     endfor
     return res
-endfunction
+endfu
 
 " this is the main tricky piece and the whole reason to borrow this plugin
 " get a list of coordinates groups [   [ [1,2], [2,5] ], [ [2,2] ]  ]
 " get a list of coordinates groups [   [ [1,2], [2,5] ]  ]
-function! s:AskForTarget(groups) abort
+fu! s:AskForTarget(groups) abort
     let single_group = ( len(a:groups) == 1 ? 1 : 0 )
 
     " how many targets there is
@@ -176,13 +159,13 @@ function! s:AskForTarget(groups) abort
             endif
         endif
     endtry
-endfunction
+endfu
 
-function! s:LinesAllSequential()
+fu! s:LinesAllSequential()
     return filter( range(line('w0'), line('w$')), 'foldclosed(v:val) == -1' )
-endfunction
+endfu
 
-function! Precise(find_targets, action)
+fu! Precise(find_targets, action)
     let group_size = len(s:index_to_key)
     let lnums = s:LinesAllSequential()
 
@@ -208,13 +191,36 @@ function! Precise(find_targets, action)
     else
         call a:action(coords[0], coords[1])
     endif
-endfunction
+endfu
 
-let FindLineTargets = { lnums -> s:FindTargets('^\zs.', lnums) }
-let FindWordTargets = { lnums -> s:FindTargets('\<.', lnums) }
-let FindEndWordTargets = { lnums -> s:FindTargets('.\>', lnums) }
 
-function! FindParagraphTargets(line_numbers)
+" Example Config
+" --------------
+
+" function returns list of places ([line, column]),
+" that match regular expression 're'
+" in lines of numbers from list 'line_numbers'
+fu! s:_FindTargetsByRegexp(re, line_numbers)
+    let targets = []
+    for l in a:line_numbers
+        let n = 1
+        let match_start = match(getline(l), a:re, 0, 1)
+        while match_start != -1
+            call add(targets, [l, match_start + 1])
+            let n += 1
+            let match_start = match(getline(l), a:re, 0, n)
+        endwhile
+    endfor
+    return targets
+endfu
+let FindTargetsByRegexp = { re -> { lnums -> s:_FindTargetsByRegexp(re, lnums) }}
+
+let FindLineTargets = FindTargetsByRegexp('^\zs.')
+let FindWordTargets = FindTargetsByRegexp('\<.')
+let FindEndWordTargets = FindTargetsByRegexp('.\>')
+let FindConstantTargets = FindTargetsByRegexp('\<\u')
+
+fu! s:_FindParagraphTargets(line_numbers)
     let targets = []
     for l in a:line_numbers
         if match(getline(l), '^.', 0, 1) != -1 && match(getline(l-1), '^$', 0, 1) != -1
@@ -222,84 +228,51 @@ function! FindParagraphTargets(line_numbers)
         endif
     endfor
     return targets
-endfunction
-
-fu! DeleteLine(l,_)
-    exe "normal! :".a:l."d\<CR>\<C-o>"
 endfu
+let FindParagraphTargets = { lnums -> s:_FindParagraphTargets(lnums)}
 
-fu! DeleteParagraph(l,c)
+fu! s:_GoAndComeBack(l, c, keys)
     let p = getcurpos()
-    call cursor(a:l,a:c)
-    exe "normal! dap"
+    call cursor(a:l, a:c)
+    exe "normal! ".a:keys
     call setpos('.', p)
 endfu
 
-fu! DeleteWord(l,c)
-    let p = getcurpos()
-    call cursor(a:l,a:c)
-    exe "normal! dw"
-    call setpos('.', p)
+fu! s:_GoAndFeedKeys(l, c, keys)
+    call cursor(a:l, a:c)
+    call feedkeys(a:keys, 'n')
 endfu
 
-fu! ChangeParagraph(l,c)
-    let p = getcurpos()
-    call cursor(a:l,a:c)
-    call feedkeys('cip', 'n')
-endfu
+let GoAndComeBack = { keys -> { l, c -> s:_GoAndComeBack(l, c, keys)}}
+let GoAndFeedKeys = { keys -> { l, c -> s:_GoAndFeedKeys(l, c, keys)}}
 
-fu! ChangeWord(l,c)
-    call cursor(a:l,a:c)
-    call feedkeys('cw', 'n')
-endfu
+let DeleteLine = GoAndComeBack('dd')
+let DeleteWord = GoAndComeBack('dw')
+let DeleteEndWord = GoAndComeBack('vbd')
+let DeleteParagraph = GoAndComeBack('dap')
 
-fu! ChangeLine(l,c)
-    call cursor(a:l,a:c)
-    call feedkeys('cc', 'n')
-endfu
-
-fu! ChangeEndWord(l,c)
-    let p = getcurpos()
-    call cursor(a:l,a:c)
-    call feedkeys('vbc', 'n')
-endfu
-
-fu! DeleteEndWord(l,c)
-    let p = getcurpos()
-    call cursor(a:l,a:c)
-    exe "normal! vbd"
-    call setpos('.', p)
-endfu
+let ChangeLine = GoAndFeedKeys('cc')
+let ChangeWord = GoAndFeedKeys('cw')
+let ChangeEndWord = GoAndFeedKeys('vbc')
+let ChangeParagraph = GoAndFeedKeys('cip')
 
 nno smw :call Precise(FindWordTargets, function('cursor'))<cr>
-nno scw :call Precise(FindWordTargets, function('ChangeWord'))<cr>
-nno sdw :call Precise(FindWordTargets, function('DeleteWord'))<cr>
+nno scw :call Precise(FindWordTargets, ChangeWord)<cr>
+nno sdw :call Precise(FindWordTargets, DeleteWord)<cr>
+
+nno smc :call Precise(FindConstantTargets, function('cursor'))<cr>
+nno scc :call Precise(FindConstantTargets, ChangeWord)<cr>
+nno sdc :call Precise(FindConstantTargets, DeleteWord)<cr>
 
 nno sme :call Precise(FindEndWordTargets, function('cursor'))<cr>
-nno sce :call Precise(FindEndWordTargets, function('ChangeEndWord'))<cr>
-nno sde :call Precise(FindEndWordTargets, function('DeleteEndWord'))<cr>
+nno sce :call Precise(FindEndWordTargets, ChangeEndWord)<cr>
+nno sde :call Precise(FindEndWordTargets, DeleteEndWord)<cr>
 
 nno sml :call Precise(FindLineTargets, function('cursor'))<cr>
-nno scl :call Precise(FindLineTargets, function('ChangeLine'))<cr>
-nno sdl :call Precise(FindLineTargets, function('DeleteLine'))<cr>
+nno scl :call Precise(FindLineTargets, ChangeLine)<cr>
+nno sdl :call Precise(FindLineTargets, DeleteLine)<cr>
 
-nno smp :call Precise(function('FindParagraphTargets'), function('cursor'))<cr>
-nno scp :call Precise(function('FindParagraphTargets'), function('ChangeParagraph'))<cr>
-nno sdp :call Precise(function('FindParagraphTargets'), function('DeleteParagraph'))<cr>
-
-
-" this is for limiting lines searched in hopes of not triggering groups, I
-" don't really care
-" function! s:LinesInRange(lines_prev, lines_next)
-"     let all_lines = filter( range(line('w0'), line('w$')), 'foldclosed(v:val) == -1' )
-"     let current = index(all_lines, line('.'))
-
-"     let lines_prev = a:lines_prev == -1 ? current : a:lines_prev
-"     let lines_next = a:lines_next == -1 ? len(all_lines) : a:lines_next
-
-"     let lines_prev_i   = max( [0, current - lines_prev] )
-"     let lines_next_i   = min( [len(all_lines), current + lines_next] )
-
-"     return all_lines[ lines_prev_i : lines_next_i ]
-" endfunction
+nno smp :call Precise(FindParagraphTargets, function('cursor'))<cr>
+nno scp :call Precise(FindParagraphTargets, ChangeParagraph)<cr>
+nno sdp :call Precise(FindParagraphTargets, DeleteParagraph)<cr>
 
