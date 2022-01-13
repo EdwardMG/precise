@@ -165,7 +165,7 @@ fu! s:LinesAllSequential()
     return filter( range(line('w0'), line('w$')), 'foldclosed(v:val) == -1' )
 endfu
 
-fu! Precise(find_targets, action)
+fu! Precise(find_targets, action, recur=1)
     let group_size = len(s:index_to_key)
     let lnums = s:LinesAllSequential()
 
@@ -190,6 +190,15 @@ fu! Precise(find_targets, action)
         return
     else
         call a:action(coords[0], coords[1])
+
+        " this doesn't quite work because of the undo dependency
+        " if a:recur
+        "     call Precise(a:find_targets, a:action, 1)
+        " endif
+
+        let g:Precise_repeat_targets = a:find_targets
+        let g:Precise_repeat_action = a:action
+        call repeat#set(':call Precise(g:Precise_repeat_targets, g:Precise_repeat_action)'."\<CR>")
     endif
 endfu
 
