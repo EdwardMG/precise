@@ -441,7 +441,7 @@ require 'date'
 require 'json'
 
 module Precise
-  Ref = Struct.new(:v, :path, :lnum, :ref, :date)
+  Ref = Struct.new(:v, :path, :lnum, :ref, :date, :pattern)
   LETTERS = 'bcdefghijklmnorstuwx'.split('')
   LETTER_PAIRS = LETTERS.product(LETTERS).map(&:join)
 
@@ -515,13 +515,24 @@ module Precise
     end
 
     def add path, lnum, label=nil
-      label = gen_label(path, lnum) unless label
-      rs << Ref.new(label, path, lnum, nil, Date.today.to_s)
+      l     = File.readlines(path)[lnum-1]
+      label = gen_label(l) unless label
+      pattern = gen_pattern(l)
+      rs << Ref.new(label, path, lnum, nil, Date.today.to_s, pattern)
       es.save
     end
 
-    def gen_label path, lnum
-      l = File.readlines(path)[lnum-1]
+    def gen_pattern l
+      if l.match?(/^\s*(class|module|def) /)
+        l.match(/\s*((class|module|def)\s+(self|)([A-z_0-9\.\?\!]*))/)[1]
+      elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+        l.match(/^(\s*function\s+([A-z_0-9]*)\()/)[1]
+      elsif l.match?(/^\s*([A-Z_0-9]*)\s*=/)
+        l.match(/^\s*([A-Z_0-9]*\s*=)/)[1]
+      end
+    end
+
+    def gen_label l
       if l.match?(/^\s*(class|module|def) /)
         l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
       elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
@@ -575,7 +586,23 @@ module Precise
       Ev.popup_clear $move_to_def_popup
       return unless r
       Ex.edit r.path
-      Ex.normal! "#{r.lnum}ggzt"
+      if r.pattern
+        r_lnum = nil
+        File.readlines(r.path).each.with_index(1) do |l, lnum|
+          if l.include? r.pattern
+            r_lnum = lnum
+            break
+          end
+        end
+        if r_lnum
+          Ex.normal! "#{r_lnum}ggzt"
+        else
+          Ex.normal! "#{r.lnum}ggzt"
+        end
+      else
+        Ex.normal! "#{r.lnum}ggzt"
+      end
+      Ex.redraw!
     end
 
   end
