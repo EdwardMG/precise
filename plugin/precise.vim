@@ -516,7 +516,7 @@ module Precise
 
     def add path, lnum, label=nil
       l     = File.readlines(path)[lnum-1]
-      label = gen_label(l) unless label
+      label = gen_label(l, path, lnum) unless label
       pattern = gen_pattern(l)
       rs << Ref.new(label, path, lnum, nil, Date.today.to_s, pattern)
       es.save
@@ -532,7 +532,7 @@ module Precise
       end
     end
 
-    def gen_label l
+    def gen_label l, path, lnum
       if l.match?(/^\s*(class|module|def) /)
         l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
       elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
@@ -588,7 +588,9 @@ module Precise
       Ex.edit r.path
       if r.pattern
         r_lnum = nil
-        File.readlines(r.path).each.with_index(1) do |l, lnum|
+        # I don't think this is where the slowdown comes from. I think it's
+        # just the edit r.path and whatever autocommands are running
+        Ev.getline(1, '$').each.with_index(1) do |l, lnum|
           if l.include? r.pattern
             r_lnum = lnum
             break
@@ -602,7 +604,7 @@ module Precise
       else
         Ex.normal! "#{r.lnum}ggzt"
       end
-      Ex.redraw!
+      # Ex.redraw!
     end
 
   end
