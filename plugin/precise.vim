@@ -524,6 +524,8 @@ module Precise
       l = File.readlines(path)[lnum-1]
       if l.match?(/^\s*(class|module|def) /)
         l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
+      elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+        l.match(/^\s*function\s+([A-z_0-9]*)\(/)[1]
       elsif l.match?(/^\s*([A-Z_0-9]*)\s*=/)
         l.match(/^\s*([A-Z_0-9]*)\s*=/)[1]
       else
@@ -585,8 +587,9 @@ module Precise
   end
 
   QuickRef = EasyRef.new(ENV["HOME"]+"/.quickrefvim")
-  TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
   initialize_mappings "QuickRef", 'q'
+
+  TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
   initialize_mappings "TempRef",  't'
 end
 RUBY
