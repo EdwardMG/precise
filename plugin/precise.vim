@@ -432,3 +432,162 @@ nno syp :call Precise(FindParagraphTargets, YankParagraph)<cr>
 nno spp :call Precise(FindParagraphTargets, PasteParagraph)<cr>
 nno slp :call Precise(FindParagraphTargets, PullParagraph)<cr>
 nno ssp :call Precise(FindParagraphTargets, CommentParagraph)<cr>
+
+
+fu! s:Setup()
+ruby << RUBY
+
+require 'date'
+require 'json'
+
+module Precise
+  Ref = Struct.new(:v, :path, :lnum, :ref, :date)
+  LETTERS = 'bcdefghijklmnorstuwx'.split('')
+  LETTER_PAIRS = LETTERS.product(LETTERS).map(&:join)
+
+  def self.get_defs p
+    rs = []
+    File.readlines(p).each.with_index(1) do |l, lnum|
+      if l.start_with? /\s*def /
+        v = l.match(/def ([\w\.\?]*)/)[1]
+        v.gsub!('self.', '')
+        rs << Ref.new(v, p, lnum, nil, nil)
+      end
+    end
+    if rs.length > LETTERS.length
+      rs.each_with_index {|r, i| r.ref = LETTER_PAIRS[i] }
+    else
+      rs.each_with_index {|r, i| r.ref = LETTERS[i] }
+    end
+    rs
+  end
+
+  SPACING = 40
+  def self.display rs
+    rs = rs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
+    half = rs.length / 2
+    rs2 = []
+    rs[..half].each.with_index(1) do |r, offset|
+      spaces = ''
+      spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
+      rs2 << "#{r}#{spaces} #{rs[half+offset]} "
+    end
+    $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+  end
+
+  def self.get_ref rs
+    inp = Ev.getcharstr
+    inp += Ev.getcharstr if rs.length > LETTERS.length
+    rs.find {|r| r.ref == inp}
+  end
+
+  def self.move
+    rs = get_defs Vim::Buffer.current.name
+    display rs
+    Ex.redraw!
+    r = get_ref rs
+    Ev.popup_clear $move_to_def_popup
+    return unless r
+    Ex.edit r.path
+    Ex.normal! "#{r.lnum}ggzt"
+  end
+
+  class EasyRef
+    attr_accessor :es, :p, :f
+
+    def initialize p, filter=nil
+      @p  = p
+      @es = ::EasyStorage.new(p)
+      @rs = es.load
+      @f  = filter
+    end
+
+    def rs
+      es.d
+    end
+
+    def add_current_line_with_label
+      add Ev.expand("%:p"), Ev.line('.'), Ev.input('label: ')
+    end
+
+    def add_current_line
+      add Ev.expand("%:p"), Ev.line('.')
+    end
+
+    def add path, lnum, label=nil
+      label = gen_label(path, lnum) unless label
+      rs << Ref.new(label, path, lnum, nil, Date.today.to_s)
+      es.save
+    end
+
+    def gen_label path, lnum
+      l = File.readlines(path)[lnum-1]
+      if l.match?(/^\s*(class|module|def) /)
+        l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
+      else
+        path.split('/').last.split('.').first + ':' + lnum.to_s
+      end
+    end
+
+    def filtered_refs
+      return rs unless f
+      rs.select &f
+    end
+
+    SPACING = 40
+    def display
+      rs1 = filtered_refs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
+      half = rs1.length / 2
+      rs2 = []
+      rs1[..half].each.with_index(1) do |r, offset|
+        spaces = ''
+        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
+        rs2 << "#{r}#{spaces} #{rs1[half+offset]} "
+      end
+      $move_to_def_popup = Ev.popup_create(rs1, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+    end
+
+    def get_ref
+      rs1 = filtered_refs
+      inp = Ev.getcharstr
+      inp += Ev.getcharstr if rs1.length > LETTERS.length
+      rs1.find {|r| r.ref == inp}
+    end
+
+    def recalc_ref_codes
+      rs1 = filtered_refs
+      if rs1.length > LETTERS.length
+        rs1.each_with_index {|r, i| r.ref = LETTER_PAIRS[i] }
+      else
+        rs1.each_with_index {|r, i| r.ref = LETTERS[i] }
+      end
+    end
+
+    def move
+      recalc_ref_codes
+      display
+      Ex.redraw!
+      r = get_ref
+      Ev.popup_clear $move_to_def_popup
+      return unless r
+      Ex.edit r.path
+      Ex.normal! "#{r.lnum}ggzt"
+    end
+  end
+
+  QuickRef = EasyRef.new(ENV["HOME"]+"/.quickrefvim")
+  TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
+  puts TempRef.filtered_refs.inspect
+end
+RUBY
+endfu
+
+call s:Setup()
+
+nno md :ruby Precise.move<CR>
+nno mq :ruby Precise::QuickRef.move<CR>
+nno m'q :ruby Precise::QuickRef.add_current_line_with_label<CR>
+nno mQ :ruby Precise::QuickRef.add_current_line<CR>
+nno mt :ruby Precise::TempRef.move<CR>
+nno m't :ruby Precise::TempRef.add_current_line_with_label<CR>
+nno mT :ruby Precise::TempRef.add_current_line<CR>
