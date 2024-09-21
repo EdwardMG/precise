@@ -575,10 +575,19 @@ module Precise
       Ex.edit r.path
       Ex.normal! "#{r.lnum}ggzt"
     end
+
+  end
+
+  def self.initialize_mappings klass, key
+    Ex.nno "m#{key.downcase}",  ":ruby Precise::#{klass}.move<CR>"
+    Ex.nno "m'#{key.downcase}", ":ruby Precise::#{klass}.add_current_line_with_label<CR>"
+    Ex.nno "m#{key.upcase}",    ":ruby Precise::#{klass}.add_current_line<CR>"
   end
 
   QuickRef = EasyRef.new(ENV["HOME"]+"/.quickrefvim")
   TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
+  initialize_mappings "QuickRef", 'q'
+  initialize_mappings "TempRef",  't'
 end
 RUBY
 endfu
@@ -586,9 +595,3 @@ endfu
 call s:Setup()
 
 nno md :ruby Precise.move<CR>
-nno mq :ruby Precise::QuickRef.move<CR>
-nno m'q :ruby Precise::QuickRef.add_current_line_with_label<CR>
-nno mQ :ruby Precise::QuickRef.add_current_line<CR>
-nno mt :ruby Precise::TempRef.move<CR>
-nno m't :ruby Precise::TempRef.add_current_line_with_label<CR>
-nno mT :ruby Precise::TempRef.add_current_line<CR>
