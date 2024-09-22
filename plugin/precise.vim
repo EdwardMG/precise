@@ -447,7 +447,8 @@ module Precise
 
   def self.get_defs p
     rs = []
-    File.readlines(p).each.with_index(1) do |l, lnum|
+
+    each_fl(r.path) do |l, lnum|
       if l.start_with? /\s*def /
         v = l.match(/def ([\w\.\?]*)/)[1]
         v.gsub!('self.', '')
@@ -492,6 +493,10 @@ module Precise
     Ex.normal! "#{r.lnum}ggzt"
   end
 
+  def self.each_fl(p, &block)
+    File.open(p, "r").each_line.with_index(1, &block)
+  end
+
   class EasyRef
     attr_accessor :es, :p, :f
 
@@ -515,7 +520,14 @@ module Precise
     end
 
     def add path, lnum, label=nil
-      l     = File.readlines(path)[lnum-1]
+      Ex.write
+      l = nil
+      Precise.each_fl(path) do |f_l, f_lnum|
+        if f_lnum == lnum
+          l = f_l
+          break
+        end
+      end
       label = gen_label(l, path, lnum) unless label
       pattern = gen_pattern(l)
       rs << Ref.new(label, path, lnum, nil, Date.today.to_s, pattern)
@@ -588,9 +600,7 @@ module Precise
       Ex.edit r.path
       if r.pattern
         r_lnum = nil
-        # I don't think this is where the slowdown comes from. I think it's
-        # just the edit r.path and whatever autocommands are running
-        Ev.getline(1, '$').each.with_index(1) do |l, lnum|
+        Precise.each_fl(r.path) do |l, lnum|
           if l.include? r.pattern
             r_lnum = lnum
             break
