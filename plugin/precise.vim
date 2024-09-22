@@ -464,11 +464,13 @@ module Precise
   end
 
   def self.gen_def l
-    if l.match?(/^\s*(class|module|def) /)
+    if l.match?(/^\s*(class|module|def) /) # ruby
       l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
-    elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+    elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/) # js
       l.match(/^\s*function\s+([A-z_0-9]*)\(/)[1]
-    elsif l.match?(/^\s*([A-Z_0-9]*)\s*=/)
+    elsif l.match?(/^\s*fu\!\s+([:A-z_0-9]*)\(/) # vim
+      l.match(/^\s*fu\!\s+([:A-z_0-9]*)\(/)[1]
+    elsif l.match?(/^\s*([A-Z_0-9]*)\s*=/) # constant
       l.match(/^\s*([A-Z_0-9]*)\s*=/)[1]
     end
   end
@@ -624,9 +626,9 @@ module Precise
       else
         Ex.normal! "#{r.lnum}ggzt"
       end
-      # Ex.redraw!
+      Ex.syn "sync fromstart"
+      Ex.redraw!
     end
-
   end
 
   def self.initialize_mappings klass, key
