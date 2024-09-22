@@ -710,6 +710,21 @@ module Precise
   TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
   initialize_mappings "TempRef",  't'
 
+  # intent of scratchref is to have something very rough for messy workflows
+  # which you can copy lines from if you want to keep some or run g/blah/d
+  # commands to filter down after building a bunch
+  ScratchRef = EasyRef.new(ENV["HOME"]+"/.scratchrefvim")
+  initialize_mappings "ScratchRef",  'm'
+
+  def self.clear_scratch_ref
+    if File.exist? ScratchRef.p
+      File.write ScratchRef.p, ""
+      ScratchRef.es.load
+    end
+  end
+
+  Ex.command "ClearScratchRef :ruby Precise.clear_scratch_ref"
+
   # EgVimPlugins = DynamicRef.new(
   #   -> () {
   #     Dir[ENV["HOME"] + "/.vim/pack/eg/opt/**/plugin/*.vim"].map do |p|
