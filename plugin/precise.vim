@@ -631,6 +631,73 @@ module Precise
     end
   end
 
+  class DynamicRef
+    attr_accessor :getter, :rs
+
+    # getter is a lambda to populate refs
+    def initialize getter
+      @getter = getter
+      @rs     = @getter.call
+    end
+
+    SPACING = 40
+    def display
+      rs1 = rs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
+      half = rs1.length / 2
+      rs2 = []
+      rs1[..half].each.with_index(1) do |r, offset|
+        spaces = ''
+        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
+        rs2 << "#{r}#{spaces} #{rs1[half+offset]} "
+      end
+      $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+    end
+
+    def get_ref
+      inp = Ev.getcharstr
+      inp += Ev.getcharstr if rs.length > LETTERS.length
+      rs.find {|r| r.ref == inp}
+    end
+
+    def recalc_ref_codes
+      if rs.length > LETTERS.length
+        rs.each_with_index {|r, i| r.ref = LETTER_PAIRS[i] }
+      else
+        rs.each_with_index {|r, i| r.ref = LETTERS[i] }
+      end
+    end
+
+    def move
+      @rs = @getter.call
+      recalc_ref_codes
+      display
+      Ex.redraw!
+      r = get_ref
+      Ev.popup_clear $move_to_def_popup
+      return unless r
+      Ex.edit r.path
+      if r.pattern
+        r_lnum = nil
+        Precise.each_fl(r.path) do |l, lnum|
+          if l.include? r.pattern
+            r_lnum = lnum
+            break
+          end
+        end
+        if r_lnum
+          Ex.normal! "#{r_lnum}ggzt"
+        else
+          Ex.normal! "#{r.lnum}ggzt"
+        end
+      else
+        Ex.normal! "#{r.lnum}ggzt"
+      end
+      # this doesn't seem to work for js?
+      Ex.syn "sync fromstart"
+      Ex.redraw!
+    end
+  end
+
   def self.initialize_mappings klass, key
     Ex.nno "m#{key.downcase}",  ":ruby Precise::#{klass}.move<CR>"
     Ex.nno "m'#{key.downcase}", ":ruby Precise::#{klass}.add_current_line_with_label<CR>"
@@ -642,6 +709,15 @@ module Precise
 
   TempRef  = EasyRef.new(ENV["HOME"]+"/.temprefvim", ->(r) { Date.parse(r.date) > (Date.today - 14) })
   initialize_mappings "TempRef",  't'
+
+  # EgVimPlugins = DynamicRef.new(
+  #   -> () {
+  #     Dir[ENV["HOME"] + "/.vim/pack/eg/opt/**/plugin/*.vim"].map do |p|
+  #       Precise::Ref.new(p.split('/').last.split('.')[0], p, 1, nil, Date.today.to_s, nil)
+  #     end
+  #   }
+  # )
+  # Ex.nno "mv",  ":ruby Precise::EgVimPlugins.move<CR>"
 end
 RUBY
 endfu
