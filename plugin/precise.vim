@@ -445,13 +445,13 @@ module Precise
   LETTERS = 'bcdefghijklmnorstuwx'.split('')
   LETTER_PAIRS = LETTERS.product(LETTERS).map(&:join)
 
+  # expand this to get any sort of high level definition, like constants and
+  # classes
   def self.get_defs p
     rs = []
 
     each_fl(p) do |l, lnum|
-      if l.start_with? /\s*def /
-        v = l.match(/def ([\w\.\?]*)/)[1]
-        v.gsub!('self.', '')
+      if v = gen_def(l)
         rs << Ref.new(v, p, lnum, nil, nil)
       end
     end
@@ -461,6 +461,16 @@ module Precise
       rs.each_with_index {|r, i| r.ref = LETTERS[i] }
     end
     rs
+  end
+
+  def self.gen_def l
+    if l.match?(/^\s*(class|module|def) /)
+      l.match(/^\s*(class|module|def) (self|)([A-z_0-9\.\?\!]*)/)[3]
+    elsif l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+      l.match(/^\s*function\s+([A-z_0-9]*)\(/)[1]
+    elsif l.match?(/^\s*([A-Z_0-9]*)\s*=/)
+      l.match(/^\s*([A-Z_0-9]*)\s*=/)[1]
+    end
   end
 
   SPACING = 40
