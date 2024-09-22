@@ -515,7 +515,6 @@ module Precise
     def initialize p, filter=nil
       @p  = p
       @es = ::EasyStorage.new(p)
-      @rs = es.load
       @f  = filter
     end
 
@@ -626,6 +625,7 @@ module Precise
       else
         Ex.normal! "#{r.lnum}ggzt"
       end
+      # this doesn't seem to work for js?
       Ex.syn "sync fromstart"
       Ex.redraw!
     end
