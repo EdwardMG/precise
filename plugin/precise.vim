@@ -637,7 +637,7 @@ module Precise
     # getter is a lambda to populate refs
     def initialize getter
       @getter = getter
-      @rs     = @getter.call
+      @rs     = []
     end
 
     SPACING = 40
