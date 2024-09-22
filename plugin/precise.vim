@@ -718,6 +718,39 @@ module Precise
   #   }
   # )
   # Ex.nno "mv",  ":ruby Precise::EgVimPlugins.move<CR>"
+
+  #  Precise::EgAnki = Precise::DynamicRef.new(
+  #    -> () {
+  #      rs = []
+  #      Dir[ENV["HOME"] + "/lol/src/**/*.js"].each do |p|
+  #        File.open(p, "r").each_line.with_index(1) do |l, lnum|
+  #          if l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+  #            label = l.match(/^\s*function\s+([A-z_0-9]*)\(/)[1]
+  #            rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+  #          end
+  #        end
+  #      end
+  #      rs
+  #    }
+  #  )
+  #  Ex.nno "ma",  ":ruby Precise::EgAnki.move<CR>"
+  #
+  #  Precise::EgLL = Precise::DynamicRef.new(
+  #    -> () {
+  #      rs = []
+  #      Dir[ENV["HOME"] + "/egapps/javascript/language_learning/js/**/*.js"].each do |p|
+  #        File.open(p, "r").each_line.with_index(1) do |l, lnum|
+  #          if l.match?(/^\s*function\s+([A-z_0-9]*)\(/)
+  #            fn = p.split('/').last.split('.').first + '#'
+  #            label = fn + l.match(/^\s*function\s+([A-z_0-9]*)\(/)[1]
+  #            rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+  #          end
+  #        end
+  #      end
+  #      rs
+  #    }
+  #  )
+  #  Ex.nno "ml",  ":ruby Precise::EgLL.move<CR>"
 end
 RUBY
 endfu
