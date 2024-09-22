@@ -448,7 +448,7 @@ module Precise
   def self.get_defs p
     rs = []
 
-    each_fl(r.path) do |l, lnum|
+    each_fl(p) do |l, lnum|
       if l.start_with? /\s*def /
         v = l.match(/def ([\w\.\?]*)/)[1]
         v.gsub!('self.', '')
@@ -571,7 +571,7 @@ module Precise
         spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
         rs2 << "#{r}#{spaces} #{rs1[half+offset]} "
       end
-      $move_to_def_popup = Ev.popup_create(rs1, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+      $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
     end
 
     def get_ref
