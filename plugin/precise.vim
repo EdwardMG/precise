@@ -445,6 +445,18 @@ module Precise
   LETTERS = 'bcdefghijklmnorstuwx'.split('')
   LETTER_PAIRS = LETTERS.product(LETTERS).map(&:join)
 
+  Buffer = Struct.new(:name)
+  def self.buffers
+    bs = []
+    Ev.getbufinfo.each do |b|
+      next if b['listed'] == 0
+      unless b['name'].empty?
+        bs << Buffer.new(b['name'])
+      end
+    end
+    bs
+  end
+
   # expand this to get any sort of high level definition, like constants and
   # classes
   def self.get_defs p
@@ -713,8 +725,8 @@ module Precise
   # intent of scratchref is to have something very rough for messy workflows
   # which you can copy lines from if you want to keep some or run g/blah/d
   # commands to filter down after building a bunch
-  ScratchRef = EasyRef.new(ENV["HOME"]+"/.scratchrefvim")
-  initialize_mappings "ScratchRef",  'm'
+  # ScratchRef = EasyRef.new(ENV["HOME"]+"/.scratchrefvim")
+  # initialize_mappings "ScratchRef",  'm'
 
   def self.clear_scratch_ref
     if File.exist? ScratchRef.p
@@ -766,6 +778,31 @@ module Precise
   #    }
   #  )
   #  Ex.nno "ml",  ":ruby Precise::EgLL.move<CR>"
+
+Precise::Markdown = Precise::DynamicRef.new(
+  -> () {
+    rs = []
+    Precise.buffers.select {|b| b.name.end_with? '.md' }.each do |b|
+      p = b.name
+      lines = File.readlines(p, chomp: true)
+      lines.each.with_index(1) do |l, lnum|
+        if l.match?(/^#+ /)
+          label = l
+          rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+        elsif l.match?(/^``` /)
+          label = l[4..]
+          rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+        elsif l.match?(/^[-=]+$/)
+          label = lines[lnum-2]
+          rs << Precise::Ref.new(label, p, lnum-1, nil, nil, nil)
+        end
+      end
+    end
+    rs
+  }
+)
+Ex.nno "mm",  ":ruby Precise::Markdown.move<CR>"
+
 end
 RUBY
 endfu
