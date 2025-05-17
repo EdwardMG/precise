@@ -803,6 +803,34 @@ Precise::Markdown = Precise::DynamicRef.new(
 )
 Ex.nno "mm",  ":ruby Precise::Markdown.move<CR>"
 
+Precise::EgCd = Precise::DynamicRef.new(
+  -> () {
+    Dir["#{Ev.expand("%:h")}/**"].select {|p| File.directory? p }.map do |p|
+      Precise::Ref.new(p.split('/').last, p, 1, nil, Date.today.to_s, nil)
+    end
+  }
+)
+Ex.nno "cd",  ":ruby Precise::EgCd.move<CR>"
+
+Precise::EgCf = Precise::DynamicRef.new(
+  -> () {
+    Dir["#{Ev.expand("%:h")}/**"].select {|p| !File.directory? p }.map do |p|
+      Precise::Ref.new(p.split('/').last, p, 1, nil, Date.today.to_s, nil)
+    end
+  }
+)
+Ex.nno "cf",  ":ruby Precise::EgCf.move<CR>"
+
+Precise::EgCb = Precise::DynamicRef.new(
+  -> () {
+    Precise.buffers.map do |p|
+      Precise::Ref.new(p.name.split('/').last, p.name, 1, nil, Date.today.to_s, nil)
+    end
+  }
+)
+Ex.nno "cb",  ":ruby Precise::EgCb.move<CR>"
+
+
 end
 RUBY
 endfu
