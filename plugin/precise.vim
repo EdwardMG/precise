@@ -16,6 +16,11 @@
 " this program, only the way that targets are generated and the way that they
 " are acted upon
 
+" Other ideas:
+" md{letter} could instantly move you to a method starting with letter,
+" otherwise give you the list of methods that start that way. md* would just
+" list all of them
+
 let g:Precise_target_keys = 'bcdefghijklmnorstuwx'
 hi PreciseTarget ctermfg=yellow ctermbg=red cterm=bold gui=bold guibg=Red guifg=yellow
 let g:Precise_match_target_hi = 'PreciseTarget'
@@ -489,15 +494,39 @@ module Precise
 
   SPACING = 40
   def self.display rs
-    rs = rs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
+    last_v = ' '
+    rs = rs.sort_by(&:v).map do |r|
+      if r.v[0] == last_v[0]
+        "#{r.ref}   #{r.v[..SPACING-2]}"
+      else
+        last_v = r.v[0]
+        "#{r.ref} #{r.v[..SPACING]}"
+      end
+    end
+
+    height = `tput lines`.to_i
     half = rs.length / 2
     rs2 = []
-    rs[..half].each.with_index(1) do |r, offset|
-      spaces = ''
-      spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
-      rs2 << "#{r}#{spaces} #{rs[half+offset]} "
+
+    if half < height
+      rs[..half].each.with_index(1) do |r, offset|
+        spaces = ''
+        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
+        rs2 << "#{r}#{spaces} #{rs[half+offset]} "
+      end
+    else
+      third = rs.length / 3
+      rs[..third].each.with_index(1) do |r, offset|
+        spaces = ''
+        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
+        ftr = "#{r}#{spaces} #{rs[third+offset]}"
+        spaces2 = ' ' * (SPACING*2 + 5 - ftr.length) if SPACING*2 + 5 - ftr.length > 0
+        rs2 << "#{r}#{spaces} #{rs[third+offset]} #{spaces2} #{rs[third*2+offset]}"
+      end
     end
     $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+    # Ev.setbufvar( Ev.winbufnr( $move_to_def_popup ), '&filetype', 'markdown')
+    # let s:N.SetFT = { ft -> { bufnr -> s:N.Snd([ setbufvar( winbufnr( bufnr ), '&filetype', ft), bufnr ]) } }
   end
 
   def self.get_ref rs
@@ -586,15 +615,7 @@ module Precise
 
     SPACING = 40
     def display
-      rs1 = filtered_refs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
-      half = rs1.length / 2
-      rs2 = []
-      rs1[..half].each.with_index(1) do |r, offset|
-        spaces = ''
-        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
-        rs2 << "#{r}#{spaces} #{rs1[half+offset]} "
-      end
-      $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+      Precise.display filtered_refs
     end
 
     def get_ref
@@ -654,15 +675,7 @@ module Precise
 
     SPACING = 40
     def display
-      rs1 = rs.map {|r| "#{r.ref} #{r.v[..SPACING]}" }
-      half = rs1.length / 2
-      rs2 = []
-      rs1[..half].each.with_index(1) do |r, offset|
-        spaces = ''
-        spaces = ' ' * (SPACING + 5 - r.length) if SPACING + 5 - r.length > 0
-        rs2 << "#{r}#{spaces} #{rs1[half+offset]} "
-      end
-      $move_to_def_popup = Ev.popup_create(rs2, { title: '', padding: [1,1,1,1], line: 1, pos: 'topleft', scrollbar: 1 })
+      Precise.display rs
     end
 
     def get_ref
@@ -830,6 +843,27 @@ Precise::EgCb = Precise::DynamicRef.new(
 )
 Ex.nno "cb",  ":ruby Precise::EgCb.move<CR>"
 
+Precise::EgMf = Precise::DynamicRef.new(
+  -> () {
+    rs = []
+    Precise.buffers
+    .select {|b| ['rb', 'js', 'vim'].include?(b.name.split('.').last) && File.exist?(b.name) }
+    .each do |b|
+      p = b.name
+
+      File.open(p, "r").each_line.with_index(1) do |l, lnum|
+        md = l.match(/^\s*function\s+([A-z_0-9]*)\(/) || l.match(/^\s*def\s+([A-z_0-9\.]*)/)
+        if md
+          fn = p.split('/').last.split('.').first + '#'
+          label = fn + md[1]
+          rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+        end
+      end
+    end
+    rs
+  }
+)
+Ex.nno "mf",  ":ruby Precise::EgMf.move<CR>"
 
 end
 RUBY
