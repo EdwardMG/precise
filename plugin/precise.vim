@@ -865,6 +865,27 @@ Precise::EgMf = Precise::DynamicRef.new(
 )
 Ex.nno "mf",  ":ruby Precise::EgMf.move<CR>"
 
+Precise::EgMa = Precise::DynamicRef.new(
+  -> () {
+    rs = []
+    Ev.argv.select {|p| ['rb', 'js', 'vim'].include?(p.split('.').last) && File.exist?(p) }
+    .each do |p|
+
+      File.open(p, "r").each_line.with_index(1) do |l, lnum|
+        md = l.match(/^\s*function\s+([A-z_0-9]*)\(/) || l.match(/^\s*def\s+([A-z_0-9\.]*)/)
+        if md
+          fn = p.split('/').last.split('.').first + '#'
+          label = fn + md[1]
+          rs << Precise::Ref.new(label, p, lnum, nil, nil, nil)
+        end
+      end
+    end
+    rs
+  }
+)
+# use with commands like :arga and :argd (default current buffer for arga, argd will take a pattern)
+Ex.nno "ma",  ":ruby Precise::EgMa.move<CR>"
+
 end
 RUBY
 endfu
